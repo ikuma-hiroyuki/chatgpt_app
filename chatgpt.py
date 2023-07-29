@@ -47,7 +47,9 @@ def choice_chat_model():
             print(f"{i}: {model}")
 
         try:
-            selected_model = input("使用するモデル番号を入力してください。: ")
+            selected_model = input("使用するモデル番号を入力してください。何も入力しない場合は 'gpt-3.5-turbo' が使われます。: ")
+            if not selected_model:
+                return "gpt-3.5-turbo"
             return models[int(selected_model)]
         except ValueError:
             print(f"{Fore.RED}数字を入力してください。{Fore.RESET}")
