@@ -46,16 +46,20 @@ def choice_chat_model():
         for i, model in enumerate(models):
             print(f"{i}: {model}")
 
-        try:
-            selected_model = input("使用するモデル番号を入力しEnterキーを押してしてください。"
-                                   "何も入力しない場合は 'gpt-3.5-turbo' が使われます。: ")
-            if not selected_model:
-                return "gpt-3.5-turbo"
-            return models[int(selected_model)]
-        except ValueError:
+        selected_model = input("使用するモデル番号を入力しEnterキーを押してしてください。"
+                               "何も入力しない場合は 'gpt-3.5-turbo' が使われます。: ")
+        # 何も入力されなかったとき
+        if not selected_model:
+            return "gpt-3.5-turbo"
+        # 数字以外が入力されたとき
+        elif not selected_model.isdigit():
             print(f"{Fore.RED}数字を入力してください。{Fore.RESET}")
-        except IndexError:
+        # 選択肢に存在しない番号が入力されたとき
+        elif not int(selected_model) in range(len(models)):
             print(f"{Fore.RED}その番号は選択肢に存在しません。{Fore.RESET}")
+        # 正常な入力
+        elif int(selected_model) in range(len(models)):
+            return models[int(selected_model)]
 
 
 def chat(model):
