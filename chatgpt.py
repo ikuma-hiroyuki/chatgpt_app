@@ -17,7 +17,7 @@ def get_gpt_model_list_with_error_handle():
         model_list = openai.Model.list()
     except (openai.error.APIError, openai.error.ServiceUnavailableError):
         print(f"{Fore.RED}OpenAI側でエラーが発生しています。少し待ってから再度試してください。{Fore.RESET}")
-        print(f"サービス稼働状況は https://status.openai.com/ で確認できます。")
+        print("サービス稼働状況は https://status.openai.com/ で確認できます。")
         exit()
     except (openai.error.Timeout, openai.error.APIConnectionError):
         print(f"{Fore.RED}ネットワークに問題があります。設定を見直すか少し待ってから再度試してください。{Fore.RESET}")
