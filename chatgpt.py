@@ -47,7 +47,8 @@ def choice_chat_model():
             print(f"{i}: {model}")
 
         try:
-            selected_model = input("使用するモデル番号を入力してください。何も入力しない場合は 'gpt-3.5-turbo' が使われます。: ")
+            selected_model = input("使用するモデル番号を入力しEnterキーを押してしてください。"
+                                   "何も入力しない場合は 'gpt-3.5-turbo' が使われます。: ")
             if not selected_model:
                 return "gpt-3.5-turbo"
             return models[int(selected_model)]
@@ -68,7 +69,7 @@ def chat(model):
     :return: チャットの履歴。ユーザーとAIアシスタントのロールと発言内容を中身とした辞書のリスト
     """
 
-    print("AIアシスタントとチャットを始めます。チャットを終了するには exit() と入力してください。")
+    print("\nAIアシスタントとチャットを始めます。チャットを終了するには exit() と入力してください。")
     system_content = input("AIアシスタントに演じて欲しい役割がある場合は入力してください。"
                            "ない場合はそのままEnterキーを押してください。: ")
 
