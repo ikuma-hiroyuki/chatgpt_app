@@ -4,6 +4,11 @@ import openai
 from colorama import Fore
 from dotenv import load_dotenv
 
+# 初期設定
+load_dotenv()
+api_key = os.getenv("API_KEY")
+openai.api_key = api_key
+
 
 def get_gpt_model_list_with_error_handle():
     """
@@ -31,7 +36,7 @@ def get_gpt_model_list_with_error_handle():
         return models
 
 
-def choice_chat_model():
+def choice_chat_model() -> str:
     """
     GPTモデルの一覧を選択させる
 
@@ -62,16 +67,17 @@ def choice_chat_model():
             return models[int(selected_model)]
 
 
-def chat(model):
+def run_chat() -> list[dict]:
     """
     AIアシスタントとユーザーとのチャットを開始する。
 
     ユーザーからの入力を受け取り、AIアシスタントが応答を生成します。
     ユーザーが 'exit()'と入力すると、チャットは終了します。
 
-    :param model: 使用するGPTモデルの指定
     :return: チャットの履歴。ユーザーとAIアシスタントのロールと発言内容を中身とした辞書のリスト
     """
+
+    model = choice_chat_model()
 
     print("\nAIアシスタントとチャットを始めます。チャットを終了するには exit() と入力してください。")
     system_content = input("AIアシスタントに演じて欲しい役割がある場合は入力してください。"
@@ -93,18 +99,14 @@ def chat(model):
         completion = openai.ChatCompletion.create(model=model, messages=chat_history)
         gpt_answer = completion.choices[0].message.content
         gpt_role = completion.choices[0].message.role
-        chat_history.append({"role": gpt_role, "content": gpt_answer})
+
+        # 応答の表示と履歴への追加
         print(f"\n{Fore.GREEN}AIアシスタント:{Fore.RESET} {gpt_answer}")
+        chat_history.append({"role": gpt_role, "content": gpt_answer})
 
     return chat_history
 
 
 if __name__ == "__main__":
-    # 初期設定
-    load_dotenv()
-    api_key = os.getenv("API_KEY")
-    openai.api_key = api_key
-
-    choice_model = choice_chat_model()
-    chat_hist = chat(choice_model)
-    print(chat_hist)
+    content = run_chat()
+    print(content)
