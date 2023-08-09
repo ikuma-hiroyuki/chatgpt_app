@@ -4,6 +4,8 @@ import openai
 from colorama import Fore
 from dotenv import load_dotenv
 
+from output_excel import write_excel, is_chat_history_open, excel_path
+
 # 初期設定
 load_dotenv()
 api_key = os.getenv("API_KEY")
@@ -107,6 +109,37 @@ def run_chat() -> list[dict]:
     return chat_history
 
 
+def create_summary(history: list[dict], length: int = 10) -> str:
+    """
+    チャットの履歴から要約を生成する。
+    :param length: 要約の長さ
+    :param history: チャットの履歴。ユーザーとAIアシスタントのロールと発言内容を中身とした辞書のリスト
+    :return: length で指定した文字数以内の文字列
+    """
+
+    # history の先頭に要約の依頼を追加
+    role = {"role": "system",
+            "content": f"あなたはチャットを要約する役割を担っています。以下のユーザーのリクエストを必ず全角{length}文字以内で要約してください"}
+
+    user_content = [role]
+    for hist in history:
+        if hist["role"] == "user":
+            user_content.append({"role": "user", "content": f"{hist['content']}\n"})
+            break
+
+    completion = openai.ChatCompletion.create(model="gpt-3.5-turbo", messages=user_content)
+
+    summary = completion.choices[0].message.content
+    if len(summary) > length:
+        summary = summary[:length] + "..."
+    return summary
+
+
 if __name__ == "__main__":
-    content = run_chat()
-    print(content)
+    if is_chat_history_open():
+        print(f"{excel_path.name} が開かれています。閉じてから再度実行してください。")
+    else:
+        chat = run_chat()
+        chat_summary = create_summary(chat)
+        write_excel(chat, chat_summary)
+
