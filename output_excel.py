@@ -33,7 +33,7 @@ def output_excel(chat):
         worksheet = workbook.active
         worksheet.title = chat.chat_summary
     else:
-        worksheet = workbook.create_sheet(title=chat.chat_summary)
+        worksheet = workbook.create_sheet(title=chat.chat_summary)  # 同じ名前がある場合、末尾に数字が付与される
         workbook.active = worksheet
 
     # ヘッダーの書き込み
