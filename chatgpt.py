@@ -15,7 +15,7 @@ class ChatGPT:
     def __init__(self, summary_length: int = 10):
         self.chat_history: list[dict] = []
         self.chat_summary: str = ""
-        self.summary_length = summary_length
+        self.summary_length: int = summary_length
 
     @staticmethod
     def _api_error_message(e):
@@ -29,7 +29,7 @@ class ChatGPT:
         elif e == openai.error.AuthenticationError:
             print(f"{Fore.RED}APIキーまたはトークンが無効もしくは期限切れです。{Fore.RESET}")
 
-    def fetch_gpt_model_list(self):
+    def fetch_gpt_model_list(self) -> list[str]:
         """
         GPTモデルの一覧を取得
 
@@ -80,7 +80,7 @@ class ChatGPT:
 
     def _start_chat(self):
         """
-        AIアシスタントとユーザーとのチャットを開始する。
+        AIアシスタントとユーザーとのチャットを開始し、チャットが終了したら要約を作成する。
 
         ユーザーからの入力を受け取り、AIアシスタントが応答を生成します。
         ユーザーが 'exit()'と入力すると、チャットは終了します。
@@ -118,18 +118,19 @@ class ChatGPT:
         """ チャットの履歴から要約を生成する。 """
 
         # chat_history の先頭に要約の依頼を追加
-        role = {"role": "system",
-                "content": f"あなたはユーザーの依頼を要約する役割を担います。以下のユーザーの依頼を必ず全角{self.summary_length}文字以内で要約してください"}
+        summary_request = {"role": "system",
+                           "content": f"あなたはユーザーの依頼を要約する役割を担います。以下のユーザーの依頼を必ず全角{self.summary_length}文字以内で要約してください"}
 
         # ユーザーの最初のリクエストを取得
-        user_content = [role]
+        initial_request = {}
         for current_message in self.chat_history:
             if current_message["role"] == "user":
-                user_content.append({"role": "user", "content": f"{current_message['content']}"})
+                initial_request = {"role": "user", "content": f"{current_message['content']}"}
                 break
 
         # GPTによる要約を取得
-        completion = openai.ChatCompletion.create(model="gpt-3.5-turbo", messages=user_content)
+        messages = [summary_request, initial_request]
+        completion = openai.ChatCompletion.create(model="gpt-3.5-turbo", messages=messages)
         self.chat_summary = completion.choices[0].message.content
 
         # 要約を調整
