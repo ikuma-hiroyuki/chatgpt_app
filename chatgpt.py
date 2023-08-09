@@ -4,142 +4,146 @@ import openai
 from colorama import Fore
 from dotenv import load_dotenv
 
-from output_excel import write_excel, is_chat_history_open, excel_path
+from output_excel import is_chat_history_open, excel_path, output_excel
 
 # 初期設定
 load_dotenv()
-api_key = os.getenv("API_KEY")
-openai.api_key = api_key
+openai.api_key = os.getenv("API_KEY")
 
 
-def get_gpt_model_list_with_error_handle():
-    """
-    エラーハンドリングを含むGPTモデルの一覧を取得
+class ChatGPT:
+    def __init__(self, summary_length: int = 10):
+        self.chat_history: list[dict] = []
+        self.chat_summary: str = ""
+        self.summary_length = summary_length
 
-    :return: GPTモデルの一覧
-    """
+    @staticmethod
+    def _api_error_message(e):
+        """APIエラーのメッセージを表示する"""
 
-    # GPTモデルの一覧を取得
-    try:
-        model_list = openai.Model.list()
-    except (openai.error.APIError, openai.error.ServiceUnavailableError):
-        print(f"{Fore.RED}OpenAI側でエラーが発生しています。少し待ってから再度試してください。{Fore.RESET}")
-        print("サービス稼働状況は https://status.openai.com/ で確認できます。")
-        exit()
-    except (openai.error.Timeout, openai.error.APIConnectionError):
-        print(f"{Fore.RED}ネットワークに問題があります。設定を見直すか少し待ってから再度試してください。{Fore.RESET}")
-        exit()
-    except openai.error.AuthenticationError:
-        print(f"{Fore.RED}APIキーまたはトークンが無効もしくは期限切れです。{Fore.RESET}")
-        exit()
-    else:
-        models = [model.id for model in model_list.data if "gpt" in model.id]
-        models.sort()
-        return models
+        if e in [openai.error.APIError, openai.error.ServiceUnavailableError]:
+            print(f"{Fore.RED}OpenAI側でエラーが発生しています。少し待ってから再度試してください。{Fore.RESET}")
+            print("サービス稼働状況は https://status.openai.com/ で確認できます。")
+        elif e in [openai.error.Timeout, openai.error.APIConnectionError]:
+            print(f"{Fore.RED}ネットワークに問題があります。設定を見直すか少し待ってから再度試してください。{Fore.RESET}")
+        elif e == openai.error.AuthenticationError:
+            print(f"{Fore.RED}APIキーまたはトークンが無効もしくは期限切れです。{Fore.RESET}")
 
+    def fetch_gpt_model_list(self):
+        """
+        GPTモデルの一覧を取得
 
-def choice_chat_model() -> str:
-    """
-    GPTモデルの一覧を選択させる
+        :return: GPTモデルの一覧
+        """
 
-    :return: 選択されたモデルの名称
-    """
+        # GPTモデルの一覧を取得
+        try:
+            model_list = openai.Model.list()
+        except openai.error.OpenAIError as e:
+            self._api_error_message(type(e))  # type(e)とすることで、eのサブクラスの型を取得できる
+            exit()
+        else:
+            models = [model.id for model in model_list.data if "gpt" in model.id]
+            models.sort()
+            return models
 
-    models = get_gpt_model_list_with_error_handle()
+    def _choice_chat_model(self) -> str:
+        """
+        GPTモデルの一覧を選択させる
 
-    # モデルの選択
-    while True:
-        # モデルの一覧を表示
-        for i, model in enumerate(models):
-            print(f"{i}: {model}")
+        :return: 選択されたモデルの名称
+        """
 
-        selected_model = input("使用するモデル番号を入力しEnterキーを押してしてください。"
-                               "何も入力しない場合は 'gpt-3.5-turbo' が使われます。: ")
-        # 何も入力されなかったとき
-        if not selected_model:
-            return "gpt-3.5-turbo"
-        # 数字以外が入力されたとき
-        elif not selected_model.isdigit():
-            print(f"{Fore.RED}数字を入力してください。{Fore.RESET}")
-        # 選択肢に存在しない番号が入力されたとき
-        elif not int(selected_model) in range(len(models)):
-            print(f"{Fore.RED}その番号は選択肢に存在しません。{Fore.RESET}")
-        # 正常な入力
-        elif int(selected_model) in range(len(models)):
-            return models[int(selected_model)]
+        default_model = "gpt-3.5-turbo"
+        models_list = self.fetch_gpt_model_list()
 
+        # モデルの選択
+        while True:
+            # モデルの一覧を表示
+            for i, model in enumerate(models_list):
+                print(f"{i}: {model}")
 
-def run_chat() -> list[dict]:
-    """
-    AIアシスタントとユーザーとのチャットを開始する。
+            selected_model = input("使用するモデル番号を入力しEnterキーを押してしてください。"
+                                   f"何も入力しない場合は '{default_model}' が使われます。: ")
+            # 何も入力されなかったとき
+            if not selected_model:
+                return default_model
+            # 数字以外が入力されたとき
+            elif not selected_model.isdigit():
+                print(f"{Fore.RED}数字を入力してください。{Fore.RESET}")
+            # 選択肢に存在しない番号が入力されたとき
+            elif not int(selected_model) in range(len(models_list)):
+                print(f"{Fore.RED}その番号は選択肢に存在しません。{Fore.RESET}")
+            # 正常な入力
+            elif int(selected_model) in range(len(models_list)):
+                return models_list[int(selected_model)]
 
-    ユーザーからの入力を受け取り、AIアシスタントが応答を生成します。
-    ユーザーが 'exit()'と入力すると、チャットは終了します。
+    def _start_chat(self):
+        """
+        AIアシスタントとユーザーとのチャットを開始する。
 
-    :return: チャットの履歴。ユーザーとAIアシスタントのロールと発言内容を中身とした辞書のリスト
-    """
+        ユーザーからの入力を受け取り、AIアシスタントが応答を生成します。
+        ユーザーが 'exit()'と入力すると、チャットは終了します。
+        """
 
-    model = choice_chat_model()
+        model = self._choice_chat_model()
 
-    print("\nAIアシスタントとチャットを始めます。チャットを終了するには exit() と入力してください。")
-    system_content = input("AIアシスタントに演じて欲しい役割がある場合は入力してください。"
-                           "ない場合はそのままEnterキーを押してください。: ")
+        print("\nAIアシスタントとチャットを始めます。チャットを終了するには exit() と入力してください。")
+        system_content = input("AIアシスタントに演じて欲しい役割がある場合は入力してください。"
+                               "ない場合はそのままEnterキーを押してください。: ")
 
-    # チャットを開始
-    chat_history = []
-    if system_content:
-        chat_history.append({"role": "system", "content": system_content})
+        # チャットを開始
+        if system_content:
+            self.chat_history.append({"role": "system", "content": system_content})
 
-    while True:
-        # ユーザー入力の受付と履歴への追加
-        user_request = input(f"\n{Fore.CYAN}あなた:{Fore.RESET} ")
-        if user_request == "exit()":
-            break
-        chat_history.append({"role": "user", "content": user_request})
+        while True:
+            # ユーザー入力の受付と履歴への追加
+            user_request = input(f"\n{Fore.CYAN}あなた:{Fore.RESET} ")
+            if user_request == "exit()":
+                break
+            self.chat_history.append({"role": "user", "content": user_request})
 
-        # GPTによる応答
-        completion = openai.ChatCompletion.create(model=model, messages=chat_history)
-        gpt_answer = completion.choices[0].message.content
-        gpt_role = completion.choices[0].message.role
+            # GPTによる応答
+            completion = openai.ChatCompletion.create(model=model, messages=self.chat_history)
+            gpt_answer = completion.choices[0].message.content
+            gpt_role = completion.choices[0].message.role
 
-        # 応答の表示と履歴への追加
-        print(f"\n{Fore.GREEN}AIアシスタント:{Fore.RESET} {gpt_answer}")
-        chat_history.append({"role": gpt_role, "content": gpt_answer})
+            # 応答の表示と履歴への追加
+            print(f"\n{Fore.GREEN}AIアシスタント:{Fore.RESET} {gpt_answer}")
+            self.chat_history.append({"role": gpt_role, "content": gpt_answer})
 
-    return chat_history
+        self._generate_summary()
 
+    def _generate_summary(self):
+        """ チャットの履歴から要約を生成する。 """
 
-def create_summary(history: list[dict], length: int = 10) -> str:
-    """
-    チャットの履歴から要約を生成する。
-    :param length: 要約の長さ
-    :param history: チャットの履歴。ユーザーとAIアシスタントのロールと発言内容を中身とした辞書のリスト
-    :return: length で指定した文字数以内の文字列
-    """
+        # chat_history の先頭に要約の依頼を追加
+        role = {"role": "system",
+                "content": f"あなたはユーザーの依頼を要約する役割を担います。以下のユーザーの依頼を必ず全角{self.summary_length}文字以内で要約してください"}
 
-    # history の先頭に要約の依頼を追加
-    role = {"role": "system",
-            "content": f"あなたはチャットを要約する役割を担っています。以下のユーザーのリクエストを必ず全角{length}文字以内で要約してください"}
+        # ユーザーの最初のリクエストを取得
+        user_content = [role]
+        for current_message in self.chat_history:
+            if current_message["role"] == "user":
+                user_content.append({"role": "user", "content": f"{current_message['content']}"})
+                break
 
-    user_content = [role]
-    for hist in history:
-        if hist["role"] == "user":
-            user_content.append({"role": "user", "content": f"{hist['content']}\n"})
-            break
+        # GPTによる要約を取得
+        completion = openai.ChatCompletion.create(model="gpt-3.5-turbo", messages=user_content)
+        self.chat_summary = completion.choices[0].message.content
 
-    completion = openai.ChatCompletion.create(model="gpt-3.5-turbo", messages=user_content)
+        # 要約を調整
+        if len(self.chat_summary) > self.summary_length:
+            self.chat_summary = self.chat_summary[:self.summary_length] + "..."
 
-    summary = completion.choices[0].message.content
-    if len(summary) > length:
-        summary = summary[:length] + "..."
-    return summary
+    def run(self):
+        if is_chat_history_open():
+            print(f"{excel_path.name} が開かれています。閉じてから再度実行してください。")
+        else:
+            self._start_chat()
+            output_excel(self)
 
 
 if __name__ == "__main__":
-    if is_chat_history_open():
-        print(f"{excel_path.name} が開かれています。閉じてから再度実行してください。")
-    else:
-        chat = run_chat()
-        chat_summary = create_summary(chat)
-        write_excel(chat, chat_summary)
-
+    chat = ChatGPT()
+    chat.run()

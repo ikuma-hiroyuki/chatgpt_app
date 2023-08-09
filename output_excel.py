@@ -15,39 +15,34 @@ def is_chat_history_open() -> bool:
         return True
 
 
-def write_excel(chat_history: list[dict], worksheet_title: str):
+def output_excel(chat):
     """
     chat_history.xlsx にチャットの履歴を書き込む。
-
-    :param chat_history: チャットの履歴。ユーザーとAIアシスタントのロールと発言内容を中身とした辞書のリスト
-    :param worksheet_title: ワークシートのタイトル
     """
 
     # ワークブックの読み込み
     is_new = False
     if excel_path.exists():
-        wb = openpyxl.load_workbook(excel_path)
+        workbook = openpyxl.load_workbook(excel_path)
     else:
-        wb = openpyxl.Workbook()
+        workbook = openpyxl.Workbook()
         is_new = True
 
     # ワークシートの作成
     if is_new:
-        ws = wb.active
-        ws.title = worksheet_title
+        worksheet = workbook.active
+        worksheet.title = chat.chat_summary
     else:
-        ws = wb.create_sheet(title=worksheet_title)
-        wb.active = ws
+        worksheet = workbook.create_sheet(title=chat.chat_summary)
+        workbook.active = worksheet
 
     # ヘッダーの書き込み
-    ws["A1"] = "ロール"
-    ws["B1"] = "発言内容"
+    worksheet["A1"], worksheet["B1"] = "ロール", "発言内容"
 
     # データの書き込み
-    for i, content in enumerate(chat_history):
-        ws[f"A{i + 2}"] = content["role"]
-        ws[f"B{i + 2}"] = content["content"]
+    for i, content in enumerate(chat.chat_history, 2):
+        worksheet[f"A{i}"], worksheet[f"B{i}"] = content["role"], content["content"]
 
     # ワークブックの保存
-    wb.save(excel_path)
-    wb.close()
+    workbook.save(excel_path)
+    workbook.close()
