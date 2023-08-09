@@ -87,9 +87,10 @@ class ChatGPT:
         ユーザーが 'exit()'と入力すると、チャットは終了します。
         """
 
+        exit_command = "exit()"
         model = self._choice_chat_model()
 
-        print("\nAIアシスタントとチャットを始めます。チャットを終了するには exit() と入力してください。")
+        print(f"\nAIアシスタントとチャットを始めます。チャットを終了するには {exit_command} と入力してください。")
         system_content = input("AIアシスタントに演じて欲しい役割がある場合は入力してください。"
                                "ない場合はそのままEnterキーを押してください。: ")
 
@@ -99,11 +100,20 @@ class ChatGPT:
 
         while True:
             # ユーザー入力の受付と履歴への追加
-            user_request = input(f"\n{Fore.CYAN}あなた:{Fore.RESET} ")
-            if user_request == "exit()":
-                break
+            while True:
+                user_request = input(f"\n{Fore.CYAN}あなた:{Fore.RESET} ")
+                if not user_request:
+                    print(f"{Fore.YELLOW}プロンプトを入力してください。{Fore.RESET}")
+                else:
+                    break
+
             if not self.initial_prompt:
                 self.initial_prompt = user_request
+
+            if self.initial_prompt and user_request == exit_command:
+                break
+            elif user_request == exit_command:
+                exit()
 
             self.chat_history.append({"role": "user", "content": user_request})
 
@@ -126,7 +136,7 @@ class ChatGPT:
                            "content": f"あなたはユーザーの依頼を要約する役割を担います。以下のユーザーの依頼を必ず全角{self.summary_length}文字以内で要約してください"}
 
         # GPTによる要約を取得
-        messages = [summary_request, self.initial_prompt]
+        messages = [summary_request, {"role": "user", "content": self.initial_prompt}]
         completion = openai.ChatCompletion.create(model="gpt-3.5-turbo", messages=messages)
         self.chat_summary = completion.choices[0].message.content
 
