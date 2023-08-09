@@ -15,6 +15,7 @@ class ChatGPT:
     def __init__(self, summary_length: int = 10):
         self.chat_history: list[dict] = []
         self.chat_summary: str = ""
+        self.initial_prompt: str = ""
         self.summary_length: int = summary_length
 
     @staticmethod
@@ -101,6 +102,9 @@ class ChatGPT:
             user_request = input(f"\n{Fore.CYAN}あなた:{Fore.RESET} ")
             if user_request == "exit()":
                 break
+            if not self.initial_prompt:
+                self.initial_prompt = user_request
+
             self.chat_history.append({"role": "user", "content": user_request})
 
             # GPTによる応答
@@ -121,15 +125,8 @@ class ChatGPT:
         summary_request = {"role": "system",
                            "content": f"あなたはユーザーの依頼を要約する役割を担います。以下のユーザーの依頼を必ず全角{self.summary_length}文字以内で要約してください"}
 
-        # ユーザーの最初のリクエストを取得
-        initial_request = {}
-        for current_message in self.chat_history:
-            if current_message["role"] == "user":
-                initial_request = {"role": "user", "content": f"{current_message['content']}"}
-                break
-
         # GPTによる要約を取得
-        messages = [summary_request, initial_request]
+        messages = [summary_request, self.initial_prompt]
         completion = openai.ChatCompletion.create(model="gpt-3.5-turbo", messages=messages)
         self.chat_summary = completion.choices[0].message.content
 
