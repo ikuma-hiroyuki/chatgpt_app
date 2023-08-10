@@ -1,9 +1,9 @@
-import datetime
 import os
+from datetime import datetime
 from pathlib import Path
 
 import openpyxl
-import openpyxl.styles
+from openpyxl.styles import Alignment, Font, PatternFill
 
 from chatgpt import ChatGPT
 
@@ -26,9 +26,9 @@ def is_chat_history_open() -> bool:
         return True
 
 
-def read_workbook() -> tuple[openpyxl.Workbook, bool]:
+def load_or_create_workbook() -> tuple[openpyxl.Workbook, bool]:
     """
-    ワークブックを読み込みそのオブジェクトを返すとともに新規作成したかどうかを返す
+    ワークブックを読み込み、そのオブジェクトを返すとともに新規作成したかどうかを返す
     :returns: ワークブックのオブジェクト, 新規作成したかどうか
     """
 
@@ -63,30 +63,31 @@ def create_worksheet(title: str, wb, is_new: bool):
     return ws
 
 
-def trim_invalid_chars(sheet_name: str) -> str:
+def trim_invalid_chars(string: str) -> str:
     """
     エクセルのシート名で使えない文字列を削除
-    :param sheet_name: シート名
-    :return: 使えない文字列を削除したシート名
+    :param string: 対象の文字列
+    :return: 使えない文字列を削除した文字列
     """
 
     invalid_chars = [':', '\\', '/', '?', '*', '[', ']']
     for char in invalid_chars:
-        sheet_name = sheet_name.replace(char, '')
-    return sheet_name
+        string = string.replace(char, '')
+    return string
 
 
 def header_formatting(ws):
     """ヘッダーの書式設定を行う"""
 
-    ws[f"A1"].font = openpyxl.styles.Font(name="Meiryo", size=11, bold=True)
-
+    ws["A1"].font = Font(name="Meiryo", size=11, bold=True)
     header_a, header_b = ws[f"A{HEADER_ROW_NUMBER}"], ws[f"B{HEADER_ROW_NUMBER}"]
-    font_style = openpyxl.styles.Font(name="Meiryo", size=11, bold=True, color="FFFFFF")
+
+    # ヘッダーのフォント変更
+    font_style = Font(name="Meiryo", size=11, bold=True, color="FFFFFF")
     header_a.font, header_b.font = font_style, font_style
 
     # ヘッダーの色を緑色にする
-    excel_green = openpyxl.styles.PatternFill(fgColor='217346')
+    excel_green = PatternFill(fill_type='solid', fgColor='217346')
     header_a.fill, header_b.fill = excel_green, excel_green
 
     # 列の幅を調整
@@ -101,11 +102,11 @@ def write_chat_history(ws, gpt):
     :param gpt: ChatGPTオブジェクト
     """
 
-    font_style = openpyxl.styles.Font(name="Meiryo", size=10)
-    assistant_style = openpyxl.styles.PatternFill(fgColor='d9d9d9')
+    font_style = Font(name="Meiryo", size=10)
+    assistant_style = PatternFill(fill_type='solid', fgColor='d9d9d9')
 
     # ヘッダーの書き込み
-    ws["A1"].value = datetime.datetime.now().strftime("%Y/%m/%d %H:%M:%S")
+    ws["A1"].value = datetime.now().strftime("%Y/%m/%d %H:%M:%S")
     ws[f"A{HEADER_ROW_NUMBER}"].value, ws[f"B{HEADER_ROW_NUMBER}"].value = "ロール", "発言内容"
 
     # チャット内容の書き込み
@@ -116,7 +117,7 @@ def write_chat_history(ws, gpt):
         cell_a.value, cell_b.value = content["role"], content["content"]
 
         # セル内改行に合わせて表示を調整
-        cell_b.alignment = openpyxl.styles.Alignment(wrapText=True)
+        cell_b.alignment = Alignment(wrapText=True)
 
         # 行の高さを調整
         adjusted_row_height = len(content["content"].split("\n")) * ROW_HEIGHT
@@ -143,7 +144,7 @@ def output_excel(gpt):
     chat_history.xlsx にチャットの履歴を書き込むためのエントリポイント。
     """
 
-    wb, is_new_create_wb = read_workbook()
+    wb, is_new_create_wb = load_or_create_workbook()
     ws = create_worksheet(gpt.chat_summary, wb, is_new_create_wb)
 
     header_formatting(ws)
