@@ -4,7 +4,8 @@ import openai
 from colorama import Fore
 from dotenv import load_dotenv
 
-from output_excel import is_chat_history_open, excel_path, output_excel
+load_dotenv()
+openai.api_key = os.getenv("API_KEY")
 
 
 class ChatGPT:
@@ -14,8 +15,8 @@ class ChatGPT:
     def __init__(self, summary_length: int = 10):
         self.chat_history: list[dict] = []
         self.chat_summary: str = ""
-        self.initial_prompt: str = ""
-        self.summary_length: int = summary_length
+        self._initial_prompt: str = ""
+        self._summary_length: int = summary_length
 
     @staticmethod
     def _print_api_error_message(e):
@@ -97,18 +98,18 @@ class ChatGPT:
                 else:
                     break
 
-            if not self.initial_prompt:
+            if not self._initial_prompt:
                 # いきなり終了コマンドが入力されたときはプログラム終了
                 if user_prompt == self.exit_command:
                     exit()
-                self.initial_prompt = user_prompt
+                self._initial_prompt = user_prompt
 
             if user_prompt == self.exit_command:
                 return ""
             else:
                 return user_prompt
 
-    def _start_chat(self):
+    def start_chat(self):
         """
         AIアシスタントとユーザーとのチャットを開始し、チャットが終了したら要約を作成する。
 
@@ -150,29 +151,14 @@ class ChatGPT:
         # chat_history の先頭に要約の依頼を追加
         summary_request = {"role": "system",
                            "content": "あなたはユーザーの依頼を要約する役割を担います。"
-                                      f"以下のユーザーの依頼を必ず全角{self.summary_length}文字以内で要約してください"}
+                                      f"以下のユーザーの依頼を必ず全角{self._summary_length}文字以内で要約してください"}
 
         # GPTによる要約を取得
-        messages = [summary_request, {"role": "user", "content": self.initial_prompt}]
+        messages = [summary_request, {"role": "user", "content": self._initial_prompt}]
         completion = openai.ChatCompletion.create(model=self.default_model, messages=messages)
         summary = completion.choices[0].message.content
 
         # 要約を調整
-        if len(summary) > self.summary_length:
-            self.chat_summary = summary[:self.summary_length] + "..."
+        if len(summary) > self._summary_length:
+            self.chat_summary = summary[:self._summary_length] + "..."
 
-    def run(self):
-        """ チャットを開始するエントリポイント。"""
-        if is_chat_history_open() and excel_path.exists():
-            print(f"{excel_path.name} が開かれています。閉じてから再度実行してください。")
-        else:
-            self._start_chat()
-
-
-if __name__ == "__main__":
-    load_dotenv()
-    openai.api_key = os.getenv("API_KEY")
-
-    gpt = ChatGPT()
-    gpt.run()
-    output_excel(gpt)
