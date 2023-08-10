@@ -15,7 +15,15 @@ def is_chat_history_open() -> bool:
         return True
 
 
-def output_excel(chat):
+def trim_invalid_chars(sheet_name: str) -> str:
+    """エクセルのシート名で使えない文字列を削除"""
+    invalid_chars = [':', '\\', '/', '?', '*', '[', ']']
+    for char in invalid_chars:
+        sheet_name = sheet_name.replace(char, '')
+    return sheet_name
+
+
+def output_excel(gpt):
     """
     chat_history.xlsx にチャットの履歴を書き込む。
     """
@@ -28,19 +36,22 @@ def output_excel(chat):
         workbook = openpyxl.Workbook()
         is_new = True
 
+    sheet_name = trim_invalid_chars(gpt.chat_summary)
+
     # ワークシートの作成
     if is_new:
         worksheet = workbook.active
-        worksheet.title = chat.chat_summary
+        worksheet.title = sheet_name
     else:
-        worksheet = workbook.create_sheet(title=chat.chat_summary)  # 同じ名前がある場合、末尾に数字が付与される
+        # 同じ名前がある場合、末尾に数字が付与される
+        worksheet = workbook.create_sheet(title=sheet_name)
         workbook.active = worksheet
 
     # ヘッダーの書き込み
     worksheet["A1"], worksheet["B1"] = "ロール", "発言内容"
 
     # データの書き込み
-    for i, content in enumerate(chat.chat_history, 2):
+    for i, content in enumerate(gpt.chat_history, 2):
         worksheet[f"A{i}"], worksheet[f"B{i}"] = content["role"], content["content"]
 
     # ワークブックの保存
