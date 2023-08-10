@@ -173,6 +173,6 @@ if __name__ == "__main__":
     load_dotenv()
     openai.api_key = os.getenv("API_KEY")
 
-    chat = ChatGPT()
-    chat.run()
-    output_excel(chat)
+    gpt = ChatGPT()
+    gpt.run()
+    output_excel(gpt)
