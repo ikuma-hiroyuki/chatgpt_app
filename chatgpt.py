@@ -22,10 +22,11 @@ class ChatGPT:
     def _print_api_error_message(e):
         """APIエラーのメッセージを表示する"""
 
-        if e in [openai.error.APIError, openai.error.ServiceUnavailableError]:
+        e = type(e)  # type(e)とすることで、eのサブクラスの型を取得できる
+        if isinstance(e, (openai.error.APIError, openai.error.ServiceUnavailableError)):
             print(f"{Fore.RED}OpenAI側でエラーが発生しています。少し待ってから再度試してください。{Fore.RESET}")
             print("サービス稼働状況は https://status.openai.com/ で確認できます。")
-        elif e in [openai.error.Timeout, openai.error.APIConnectionError]:
+        elif e == openai.error.RateLimitError:
             print(f"{Fore.RED}ネットワークに問題があります。設定を見直すか少し待ってから再度試してください。{Fore.RESET}")
         elif e == openai.error.AuthenticationError:
             print(f"{Fore.RED}APIキーまたはトークンが無効もしくは期限切れです。{Fore.RESET}")
@@ -42,7 +43,7 @@ class ChatGPT:
         try:
             model_list = openai.Model.list()
         except openai.error.OpenAIError as e:
-            self._print_api_error_message(type(e))  # type(e)とすることで、eのサブクラスの型を取得できる
+            self._print_api_error_message(e)
             exit()
         else:
             models = [model.id for model in model_list.data if "gpt" in model.id]
@@ -146,7 +147,13 @@ class ChatGPT:
         self._generate_summary()
 
     def _generate_summary(self):
-        """ チャットの履歴から要約を生成する。 """
+        """
+        チャットの履歴から要約を生成する。
+
+        要約する文字数は self._summary_length で指定する。
+        ただし、GPTに文字数を指定して要約を生成させると、指定した文字数よりも多くなる場合がある。
+        その場合、要約の文字数を self._summary_length に合わせ、最後に ... を追加する。
+        """
 
         # chat_history の先頭に要約の依頼を追加
         summary_request = {"role": "system",
@@ -161,4 +168,5 @@ class ChatGPT:
         # 要約を調整
         if len(summary) > self._summary_length:
             self.chat_summary = summary[:self._summary_length] + "..."
-
+        else:
+            self.chat_summary = summary
