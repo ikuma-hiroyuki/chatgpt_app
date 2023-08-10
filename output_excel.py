@@ -9,7 +9,8 @@ from chatgpt import ChatGPT
 
 base_dir = Path(__file__).parent
 excel_path = base_dir / "chat_history.xlsx"
-HEADER_ROW = 2
+
+HEADER_ROW_NUMBER = 2
 ROW_HEIGHT = 15
 
 
@@ -40,21 +41,25 @@ def read_workbook() -> tuple[openpyxl.Workbook, bool]:
         return wb, True
 
 
-def create_worksheet(title: str, is_new: bool, wb: openpyxl.Workbook) -> openpyxl.Workbook.worksheets:
+def create_worksheet(title: str, wb, is_new: bool):
     """
     ワークシートを作成する
     :param title: ワークシートのタイトル
-    :param is_new: ブックを新規作成したかどうか
     :param wb: 対象のワークブックのオブジェクト
+    :param is_new: ブックを新規作成したかどうか
     :return: ワークシートのオブジェクト
     """
+
     title = trim_invalid_chars(title)
     if is_new:
         ws = wb.active
         ws.title = title
     else:
         ws = wb.create_sheet(title)  # 同じ名前がある場合、末尾に数字が付与される
-        wb.active = ws
+
+    wb.move_sheet(ws, offset=-len(wb.worksheets) + 1)
+    wb.active = ws
+
     return ws
 
 
@@ -64,52 +69,63 @@ def trim_invalid_chars(sheet_name: str) -> str:
     :param sheet_name: シート名
     :return: 使えない文字列を削除したシート名
     """
+
     invalid_chars = [':', '\\', '/', '?', '*', '[', ']']
     for char in invalid_chars:
         sheet_name = sheet_name.replace(char, '')
     return sheet_name
 
 
-def cell_formatting(ws):
-    """出力先のセルの書式設定を行う"""
+def header_formatting(ws):
+    """ヘッダーの書式設定を行う"""
 
-    # ヘッダーを太字にする
-    bold = openpyxl.styles.Font(bold=True)
-    ws[f"A{HEADER_ROW}"].font, ws[f"B{HEADER_ROW}"].font = bold, bold
+    ws[f"A1"].font = openpyxl.styles.Font(name="Meiryo", size=11, bold=True)
+
+    header_a, header_b = ws[f"A{HEADER_ROW_NUMBER}"], ws[f"B{HEADER_ROW_NUMBER}"]
+    font_style = openpyxl.styles.Font(name="Meiryo", size=11, bold=True, color="FFFFFF")
+    header_a.font, header_b.font = font_style, font_style
 
     # ヘッダーの色を緑色にする
-    excel_green = openpyxl.styles.PatternFill(patternType='solid', fgColor='217346')
-    ws[f"A{HEADER_ROW}"].fill, ws[f"B{HEADER_ROW}"].fill = excel_green, excel_green
+    excel_green = openpyxl.styles.PatternFill(fgColor='217346')
+    header_a.fill, header_b.fill = excel_green, excel_green
 
-    # ヘッダーの文字を白くする
-    white_font = openpyxl.styles.Font(color=openpyxl.styles.colors.WHITE)
-    ws[f"A{HEADER_ROW}"].font, ws[f"B{HEADER_ROW}"].font = white_font, white_font
-
-    # B列の幅を調整
+    # 列の幅を調整
+    ws.column_dimensions["A"].width = 22
     ws.column_dimensions["B"].width = 168
 
 
-def write_history(ws, gpt):
+def write_chat_history(ws, gpt):
     """
-    チャットの履歴を書き込み、行の高さを調整する
-    :param ws: ワークシートのオブジェクト
-    :param gpt: ChatGPTのオブジェクト
+    チャットの履歴を書き込み、書式設定する
+    :param ws: ワークシートオブジェクト
+    :param gpt: ChatGPTオブジェクト
     """
+
+    font_style = openpyxl.styles.Font(name="Meiryo", size=10)
+    assistant_style = openpyxl.styles.PatternFill(fgColor='d9d9d9')
 
     # ヘッダーの書き込み
     ws["A1"].value = datetime.datetime.now().strftime("%Y/%m/%d %H:%M:%S")
-    ws[f"A{HEADER_ROW}"].value, ws[f"B{HEADER_ROW}"].value = "ロール", "発言内容"
+    ws[f"A{HEADER_ROW_NUMBER}"].value, ws[f"B{HEADER_ROW_NUMBER}"].value = "ロール", "発言内容"
 
     # チャット内容の書き込み
     for i, content in enumerate(gpt.chat_history, 3):
-        ws[f"A{i}"].value, ws[f"B{i}"].value = content["role"], content["content"]
+        cell_a, cell_b = ws[f"A{i}"], ws[f"B{i}"]
+
+        # ロールと発言内容を書き込み
+        cell_a.value, cell_b.value = content["role"], content["content"]
 
         # セル内改行に合わせて表示を調整
-        ws[f"B{i}"].alignment = openpyxl.styles.Alignment(wrapText=True)
+        cell_b.alignment = openpyxl.styles.Alignment(wrapText=True)
 
         # 行の高さを調整
         adjusted_row_height = len(content["content"].split("\n")) * ROW_HEIGHT
         ws.row_dimensions[i].height = adjusted_row_height
+
+        # 書式設定
+        cell_a.font, cell_b.font = font_style, font_style
+        if content["role"] == "assistant":
+            cell_a.fill, cell_b.fill = assistant_style, assistant_style
 
 
 def open_workbook():
@@ -128,10 +144,10 @@ def output_excel(gpt):
     """
 
     wb, is_new_create_wb = read_workbook()
-    ws = create_worksheet(gpt.chat_summary, is_new_create_wb, wb)
+    ws = create_worksheet(gpt.chat_summary, wb, is_new_create_wb)
 
-    cell_formatting(ws)
-    write_history(ws, gpt)
+    header_formatting(ws)
+    write_chat_history(ws, gpt)
     wb.save(excel_path)
     wb.close()
     open_workbook()
