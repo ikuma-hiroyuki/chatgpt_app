@@ -1,4 +1,5 @@
 import os
+import subprocess
 from datetime import datetime
 from pathlib import Path
 
@@ -16,14 +17,16 @@ ROW_HEIGHT = 15
 
 def is_chat_history_open() -> bool:
     """excel_pathが開かれているかどうかを返す"""
-    if not excel_path.exists():
-        return False
-    try:
-        with excel_path.open("r+b"):
-            pass
-        return False
-    except IOError:
-        return True
+    if os.name == "nt":
+        try:
+            with excel_path.open("r+b"):
+                pass
+            return False
+        except IOError:
+            return True
+    else:
+        result = subprocess.run(["lsof", str(excel_path)], stdout=subprocess.PIPE)
+        return bool(result.stdout)
 
 
 def load_or_create_workbook() -> tuple[openpyxl.Workbook, bool]:
