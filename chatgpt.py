@@ -40,7 +40,7 @@ class ChatGPT:
     @staticmethod
     def fetch_gpt_model_list() -> list[str] | None:
         """
-        GPTモデルの一覧を取得する。APIエラーでも出るが取得できないときはNoneを返す。
+        GPTモデルの一覧を取得する。エラーでモデルが取得できないときはNoneを返す。
         :return: GPTモデルの一覧もしくはNone
         """
 
@@ -56,7 +56,7 @@ class ChatGPT:
 
     def _choice_chat_model(self) -> str | None:
         """
-        GPTモデルの一覧を選択させる。APIエラーでモデルが取得できないときはNoneを返す。
+        GPTモデルの一覧を選択させる
         :return: 選択されたモデルの名称もしくはNone
         """
 
