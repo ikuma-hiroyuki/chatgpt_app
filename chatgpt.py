@@ -14,7 +14,7 @@ class ChatGPT:
 
     def __init__(self, summary_length: int = 10):
         self.gpt_model = ""
-        self.chat_history: list[dict] = []
+        self.chat_log: list[dict] = []
         self.chat_summary: str = ""
         self._initial_prompt: str = ""
         self._summary_length: int = summary_length
@@ -60,29 +60,29 @@ class ChatGPT:
         :return: 選択されたモデルの名称もしくはNone
         """
 
-        models_list = self.fetch_gpt_model_list()
-        if not models_list:
+        model_list = self.fetch_gpt_model_list()
+        if not model_list:
             return None
 
         while True:
             # モデルの一覧を表示
             print("\nAIとのチャットに使用するモデルの番号を入力しEnterキーを押してしてください。")
-            for i, model in enumerate(models_list):
+            for i, model in enumerate(model_list):
                 print(f"{i}: {model}")
-            selected_model = input(f"何も入力しない場合は{Fore.GREEN} {self.DEFAULT_MODEL} {Fore.RESET}が使われます。: ")
+            input_number = input(f"何も入力しない場合は{Fore.GREEN} {self.DEFAULT_MODEL} {Fore.RESET}が使われます。: ")
 
             # 何も入力されなかったとき
-            if not selected_model:
+            if not input_number:
                 return self.DEFAULT_MODEL
             # 数字以外が入力されたとき
-            if not selected_model.isdigit():
+            if not input_number.isdigit():
                 print(f"{Fore.RED}数字を入力してください。{Fore.RESET}")
             # 選択肢に存在しない番号が入力されたとき
-            elif not int(selected_model) in range(len(models_list)):
+            elif not int(input_number) in range(len(model_list)):
                 print(f"{Fore.RED}その番号は選択肢に存在しません。{Fore.RESET}")
             # 正常な入力
-            elif int(selected_model) in range(len(models_list)):
-                return models_list[int(selected_model)]
+            elif int(input_number) in range(len(model_list)):
+                return model_list[int(input_number)]
 
     def _input_user_prompt(self) -> str:
         """
@@ -103,25 +103,25 @@ class ChatGPT:
 
             return user_prompt
 
-    def _give_role_to_gpt(self):
+    def _give_role_to_system(self):
         """ AIアシスタントに与える役割を入力させる """
         print(f"AIアシスタントとチャットを始めます。")
         system_content = input("AIアシスタントに与える役割がある場合は入力してください。"
                                "ない場合はそのままEnterキーを押してください。: ")
         if system_content:
-            self.chat_history.append({"role": "system", "content": system_content})
+            self.chat_log.append({"role": "system", "content": system_content})
 
     def _fetch_gpt_answer(self):
         """
         GPTモデルにユーザーのプロンプトを与えて応答を生成させ、チャット履歴に追加するとともに、応答を返却する。
-        :returns: AIアシスタントの応答と役割
+        :returns: AIアシスタントの応答
         """
 
-        completion = openai.ChatCompletion.create(model=self.gpt_model, messages=self.chat_history)
-        answer = completion.choices[0].message.content
-        role = completion.choices[0].message.role
-        self.chat_history.append({"role": role, "content": answer})
-        return answer, role
+        response = openai.ChatCompletion.create(model=self.gpt_model, messages=self.chat_log)
+        content = response.choices[0].message.content
+        role = response.choices[0].message.role
+        self.chat_log.append({"role": role, "content": content})
+        return content
 
     def _generate_summary(self):
         """
@@ -139,8 +139,10 @@ class ChatGPT:
                                       f"以下のユーザーの依頼を必ず全角{self._summary_length}文字以内で要約してください"}
         # GPTによる要約を取得
         messages = [summary_request, {"role": "user", "content": self._initial_prompt}]
-        completion = openai.ChatCompletion.create(model=self.gpt_model, messages=messages)
-        summary = completion.choices[0].message.content
+        response = openai.ChatCompletion.create(model=self.gpt_model,
+                                                messages=messages,
+                                                max_tokens=self._summary_length)
+        summary = response.choices[0].message.content
 
         # 要約を調整
         if len(summary) > self._summary_length:
@@ -148,7 +150,7 @@ class ChatGPT:
         else:
             return summary
 
-    def chat_start(self):
+    def chat_runner(self):
         """
         AIアシスタントとユーザーとのチャットを開始し、チャットが終了したら要約を作成する。
 
@@ -156,7 +158,7 @@ class ChatGPT:
         ユーザーが exit() と入力するとチャット終了。
         """
 
-        self._give_role_to_gpt()
+        self._give_role_to_system()
         self.gpt_model = self._choice_chat_model()
         if not self.gpt_model:
             print(f"{Fore.RED}エラーが発生しました。プログラムを終了します。{Fore.RESET}")
@@ -170,8 +172,8 @@ class ChatGPT:
             exit()
 
         while user_prompt != self.EXIT_COMMAND:
-            self.chat_history.append({"role": "user", "content": user_prompt})
-            gpt_answer, gpt_role = self._fetch_gpt_answer()
+            self.chat_log.append({"role": "user", "content": user_prompt})
+            gpt_answer = self._fetch_gpt_answer()
             print(f"\n{Fore.GREEN}AIアシスタント:{Fore.RESET} {gpt_answer}")
             user_prompt = self._input_user_prompt()
         else:

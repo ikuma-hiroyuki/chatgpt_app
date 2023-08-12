@@ -113,7 +113,7 @@ def write_chat_history(ws, gpt):
     ws[f"A{HEADER_ROW_NUMBER}"].value, ws[f"B{HEADER_ROW_NUMBER}"].value = "ロール", "発言内容"
 
     # チャット内容の書き込み
-    for i, content in enumerate(gpt.chat_history, 3):
+    for i, content in enumerate(gpt.chat_log, 3):
         cell_a, cell_b = ws[f"A{i}"], ws[f"B{i}"]
 
         # ロールと発言内容を書き込み
@@ -159,6 +159,6 @@ def output_excel(gpt):
 
 if __name__ == "__main__":
     chat = ChatGPT()
-    chat.chat_history = [{"role": "user", "content": "こんにちは"}, {"role": "assistant", "content": "こんばんは"}]
+    chat.chat_log = [{"role": "user", "content": "こんにちは"}, {"role": "assistant", "content": "こんばんは"}]
     chat.chat_summary = "test"
     output_excel(chat)
