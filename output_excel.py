@@ -16,7 +16,10 @@ ROW_HEIGHT = 18
 
 
 def is_open_output_excel() -> bool:
-    """excel_pathが開かれているかどうかを返す"""
+    """
+    excel_pathが開かれているかどうかを返す
+    :return: excel_pathが開かれているかどうか
+    """
     if os.name == "nt":
         try:
             with excel_path.open("r+b"):
