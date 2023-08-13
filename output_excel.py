@@ -21,6 +21,7 @@ def is_open_output_excel() -> bool:
     :return: excel_pathが開かれているかどうか
     """
     if os.name == "nt":
+        # Windows
         try:
             with excel_path.open("r+b"):
                 pass
@@ -28,6 +29,7 @@ def is_open_output_excel() -> bool:
         except IOError:
             return True
     else:
+        # unix系
         if excel_path.exists():
             result = subprocess.run(["lsof", str(excel_path)], stdout=subprocess.PIPE)
             return bool(result.stdout)
