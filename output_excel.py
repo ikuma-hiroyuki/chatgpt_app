@@ -12,10 +12,10 @@ base_dir = Path(__file__).parent
 excel_path = base_dir / "chat_history.xlsx"
 
 HEADER_ROW_NUMBER = 2
-ROW_HEIGHT = 15
+ROW_HEIGHT = 18
 
 
-def is_chat_history_open() -> bool:
+def is_open_output_excel() -> bool:
     """excel_pathが開かれているかどうかを返す"""
     if os.name == "nt":
         try:
@@ -25,8 +25,11 @@ def is_chat_history_open() -> bool:
         except IOError:
             return True
     else:
-        result = subprocess.run(["lsof", str(excel_path)], stdout=subprocess.PIPE)
-        return bool(result.stdout)
+        if excel_path.exists():
+            result = subprocess.run(["lsof", str(excel_path)], stdout=subprocess.PIPE)
+            return bool(result.stdout)
+        else:
+            return False
 
 
 def load_or_create_workbook() -> tuple[openpyxl.Workbook, bool]:
@@ -80,10 +83,18 @@ def trim_invalid_chars(string: str) -> str:
 
 
 def header_formatting(ws):
-    """ヘッダーの書式設定を行う"""
+    """
+    ヘッダーの書式設定を行う
+    :param ws: ワークシートオブジェクト
+    """
 
+    # ヘッダーのフォント設定とヘッダーオブジェクトを変数に格納
     ws["A1"].font = Font(name="Meiryo", size=11, bold=True)
     header_a, header_b = ws[f"A{HEADER_ROW_NUMBER}"], ws[f"B{HEADER_ROW_NUMBER}"]
+
+    # ヘッダーの書き込み
+    ws["A1"].value = datetime.now().strftime("%Y/%m/%d %H:%M:%S")
+    header_a.value, header_b.value = "ロール", "発言内容"
 
     # ヘッダーのフォント変更
     font_style = Font(name="Meiryo", size=11, bold=True, color="FFFFFF")
@@ -107,10 +118,6 @@ def write_chat_history(ws, gpt):
 
     font_style = Font(name="Meiryo", size=10)
     assistant_style = PatternFill(fill_type='solid', fgColor='d9d9d9')
-
-    # ヘッダーの書き込み
-    ws["A1"].value = datetime.now().strftime("%Y/%m/%d %H:%M:%S")
-    ws[f"A{HEADER_ROW_NUMBER}"].value, ws[f"B{HEADER_ROW_NUMBER}"].value = "ロール", "発言内容"
 
     # チャット内容の書き込み
     for i, content in enumerate(gpt.chat_log, 3):
@@ -145,6 +152,7 @@ def open_workbook():
 def output_excel(gpt):
     """
     chat_history.xlsx にチャットの履歴を書き込むためのエントリポイント。
+    :param gpt: ChatGPTオブジェクト
     """
 
     wb, is_new_create_wb = load_or_create_workbook()
