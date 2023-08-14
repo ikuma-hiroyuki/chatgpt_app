@@ -28,7 +28,7 @@ def is_open_output_excel() -> bool:
             return False
         except IOError:
             return True
-    else:
+    elif os.name == "posix":
         # unix系
         if excel_path.exists():
             result = subprocess.run(["lsof", str(excel_path)], stdout=subprocess.PIPE)
