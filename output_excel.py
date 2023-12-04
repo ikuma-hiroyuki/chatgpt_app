@@ -23,10 +23,11 @@ def is_open_output_excel() -> bool:
     if os.name == "nt":
         try:
             with excel_path.open("r+b"):
-                pass
-            return False
-        except IOError:
+                return False
+        except PermissionError:
             return True
+        except FileNotFoundError:
+            return False
     else:
         if excel_path.exists():
             result = subprocess.run(["lsof", str(excel_path)], stdout=subprocess.PIPE)
