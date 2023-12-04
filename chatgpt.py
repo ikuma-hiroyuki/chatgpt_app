@@ -36,6 +36,8 @@ class ChatGPT:
             ChatGPT._print_error_message("ネットワークに問題があります。設定を見直すか少し待ってから再度試してください。")
         elif isinstance(e, openai.error.AuthenticationError):
             ChatGPT._print_error_message("APIキーまたはトークンが無効もしくは期限切れです。")
+        else:
+            ChatGPT._print_error_message("エラーが発生しました。少し待ってから再度試してください。")
 
     @staticmethod
     def fetch_gpt_model_list() -> list[str] | None:
@@ -90,18 +92,16 @@ class ChatGPT:
         :return: ユーザーのプロンプト
         """
 
-        while True:
-            while True:
-                user_prompt = input(f"{Fore.CYAN}あなた:{Fore.RESET} ")
-                if not user_prompt:
-                    print(f"{Fore.YELLOW}プロンプトを入力してください。{Fore.RESET}")
-                else:
-                    break
+        user_prompt = ""
+        while not user_prompt:
+            user_prompt = input(f"{Fore.CYAN}あなた:{Fore.RESET} ")
+            if not user_prompt:
+                print(f"{Fore.YELLOW}プロンプトを入力してください。{Fore.RESET}")
 
             if not self._initial_prompt:
                 self._initial_prompt = user_prompt
 
-            return user_prompt
+        return user_prompt
 
     def _give_role_to_system(self):
         """ AIアシスタントに与える役割を入力させる """
@@ -161,7 +161,6 @@ class ChatGPT:
         self._give_role_to_system()
         self.gpt_model = self._choice_chat_model()
         if not self.gpt_model:
-            print(f"{Fore.RED}エラーが発生しました。プログラムを終了します。{Fore.RESET}")
             exit()
 
         print(f"\nチャットを終了するには{Fore.GREEN} {self.EXIT_COMMAND} {Fore.RESET}と入力します。")
